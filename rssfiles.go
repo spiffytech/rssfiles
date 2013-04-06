@@ -13,9 +13,34 @@ import (
     "github.com/stretchrcom/goweb/goweb"
 )
 
-var baseurl = "https://open.ge.tt/1/"
+var baseurl = "https://open.ge.tt/1"
+
+type File struct {
+    Fileid int
+    Filename string
+    Getturl string
+    Created int
+}
+
+type Share struct {
+    Sharename string
+    Title string
+    Created int
+    Files []File
+}
+type AuthStuff struct {
+    Accesstoken string
+    Refreshtoken string
+}
+var authStuff AuthStuff
+
 
 func main() {
+    authStuff = gettLogin()
+    enumerateShares()
+}
+
+func gettLogin() AuthStuff {
     type login struct {
         Apikey string `json:"apikey"`
         Email string `json:"email"`
@@ -29,35 +54,35 @@ func main() {
     }
     reader := bytes.NewReader(b)
 
-    resp, err := http.Post("https://open.ge.tt/1/users/login", "application/json", reader)
+    resp, err := http.Post(baseurl + "/users/login", "application/json", reader)
     if err != nil {
         panic(err)
     }
+    defer resp.Body.Close()
 
     bytes, err := ioutil.ReadAll(resp.Body)
     if err != nil {
         panic(err)
     }
 
-    type AuthStuff struct {
-        Accesstoken string
-        Refreshtoken string
-    }
-
     var authStuff AuthStuff
     json.Unmarshal(bytes, &authStuff)
 
+    return authStuff;
+}
+
+
+func enumerateShares() []Share {
     u, err := url.Parse(baseurl)
     if err != nil {
         panic(err)
     }
-    u.Path += "shares"
+    u.Path += "/shares"
     q := u.Query()
     q.Set("accesstoken", authStuff.Accesstoken)
     u.RawQuery = q.Encode()
-    fmt.Println(u)
 
-    resp, err = http.Get(u.String())
+    resp, err := http.Get(u.String())
     if err != nil {
         panic(err)
     }
@@ -68,22 +93,11 @@ func main() {
     }
     fmt.Println(string(body))
 
-    type File struct {
-        Fileid int
-        Filename string
-        Getturl string
-        Created int
-    }
-
-    type Share struct {
-        Sharename string
-        Title string
-        Created int
-        Files []File
-    }
     var shares []Share
     json.Unmarshal(body, &shares)
     fmt.Println(shares)
+
+    return shares
 }
 
 func runserver() {
