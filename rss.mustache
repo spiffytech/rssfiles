@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+    <rss version="2.0">
+    <channel>
+        <title>RSS Title</title>
+        <description>Transfer files between ge.tt and your podcatcher</description>
+        <link>http://rssfiles.spiffyte.ch</link>
+        <ttl>1800</ttl>
+
+        {{#shares}}
+            {{#Files}}
+                <item>
+                    <title>{{Filename}}</title>
+                    <link>{{Getturl}}</link>
+                    <guid>{{Guid}}</guid>
+                    {{#Timestamp}}
+                        <pubDate>{{String}}</pubDate>
+                    {{/Timestamp}}
+                    <enclosure url="{{Getturl}}" length="{{Size}}" />
+                </item>
+            {{/Files}}
+        {{/shares}}
+    </channel>
+</rss>

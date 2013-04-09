@@ -9,8 +9,11 @@ import (
     "net/http"
     "net/url"
     "os"
+    "strconv"
+    "time"
 
     "github.com/stretchrcom/goweb/goweb"
+    "github.com/hoisie/mustache"
 )
 
 var baseurl = "https://open.ge.tt/1"
@@ -19,14 +22,28 @@ type File struct {
     Fileid int
     Filename string
     Getturl string
-    Created int
+    Created int64
+    Timestamp time.Time
+    Title string
+    Size int64
+    Guid string
+    FileID int `json:"fileid"`
+}
+func (f File) renderTitle(s Share) string {
+    title := f.Filename
+
+    if s.Title != "" {
+        title = s.Title + "-" + title
+    }
+    return title
 }
 
 type Share struct {
     Sharename string
     Title string
-    Created int
+    Created int64
     Files []File
+    Guid string
 }
 type AuthStuff struct {
     Accesstoken string
@@ -37,7 +54,8 @@ var authStuff AuthStuff
 
 func main() {
     authStuff = gettLogin()
-    enumerateShares()
+    shares := enumerateShares()
+    fmt.Println(renderRSS(shares))
 }
 
 func gettLogin() AuthStuff {
@@ -97,7 +115,33 @@ func enumerateShares() []Share {
     json.Unmarshal(body, &shares)
     fmt.Println(shares)
 
+    for shareIndex, share := range shares {
+        shares[shareIndex].Guid = share.Sharename
+
+        for fileIndex, file := range share.Files {
+            shares[shareIndex].Files[fileIndex].Guid = share.Sharename + "_" + strconv.Itoa(file.FileID)
+
+            shares[shareIndex].Files[fileIndex].Getturl += "/blob?download"
+
+            shares[shareIndex].Files[fileIndex].Timestamp = time.Unix(file.Created, 0)
+        }
+    }
+
     return shares
+}
+
+func renderRSS(shares []Share) string {
+    tpl, err := mustache.ParseFile("rss.mustache")
+    if err != nil {
+        panic(err)
+    }
+
+    context := make(map[string][]Share)
+    context["shares"] = shares
+
+    return tpl.Render(context)
+    //return tpl.Render(shares)
+
 }
 
 func runserver() {
