@@ -4,7 +4,7 @@ import (
     "bytes"
     "encoding/json"
     "fmt"
-    "io"
+    //"io"
     "io/ioutil"
     "net/http"
     "net/url"
@@ -53,10 +53,12 @@ var authStuff AuthStuff
 
 
 func main() {
-    authStuff = gettLogin()
-    shares := enumerateShares()
-    fmt.Println(renderRSS(shares))
+    //authStuff = gettLogin()
+    //shares := enumerateShares()
+    //fmt.Println(renderRSS(shares))
+    runServer()
 }
+
 
 func gettLogin() AuthStuff {
     type login struct {
@@ -130,6 +132,7 @@ func enumerateShares() []Share {
     return shares
 }
 
+
 func renderRSS(shares []Share) string {
     tpl, err := mustache.ParseFile("rss.mustache")
     if err != nil {
@@ -144,19 +147,15 @@ func renderRSS(shares []Share) string {
 
 }
 
-func runserver() {
 
+func runServer() {
     goweb.MapFunc("/", func(c *goweb.Context) {
-        resp, err := http.Get("http://almamater.xkcd.com/")
-        if err != nil {
-            panic(err)
-        }
-        defer resp.Body.Close()
-
-        //teeReader := io.TeeReader(resp.Body, os.Stdout)
-        teeReader := io.TeeReader(resp.Body, c.ResponseWriter)
-        ioutil.ReadAll(teeReader)
+        authStuff = gettLogin()
+        shares := enumerateShares()
+        rss := renderRSS(shares)
+        fmt.Fprint(c.ResponseWriter, rss)
     })
 
-    //goweb.ListenAndServe("0.0.0.0:3000")
+    fmt.Println("Running server")
+    goweb.ListenAndServe("0.0.0.0:3001")
 }
