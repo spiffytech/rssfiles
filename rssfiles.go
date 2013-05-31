@@ -6,13 +6,14 @@ import (
     "fmt"
     //"io"
     "io/ioutil"
+    "path/filepath"
     "net/http"
     "net/url"
     "os"
     "strconv"
     "time"
 
-    "github.com/stretchrcom/goweb/goweb"
+    mux "github.com/gorilla/mux"
     "github.com/hoisie/mustache"
 )
 
@@ -24,10 +25,12 @@ type File struct {
     Getturl string
     Created int64
     Timestamp time.Time
+    TimestampStr string
     Title string
     Size int64
     Guid string
     FileID int `json:"fileid"`
+    Mimetype string
 }
 func (f File) renderTitle(s Share) string {
     title := f.Filename
@@ -126,6 +129,12 @@ func enumerateShares() []Share {
             shares[shareIndex].Files[fileIndex].Getturl += "/blob?download"
 
             shares[shareIndex].Files[fileIndex].Timestamp = time.Unix(file.Created, 0)
+            shares[shareIndex].Files[fileIndex].TimestampStr = shares[shareIndex].Files[fileIndex].Timestamp.Format(time.RFC822)
+
+            ext := filepath.Ext(file.Filename)
+            if ext == ".mp3" || ext == ".m4a" {
+                shares[shareIndex].Files[fileIndex].Mimetype = "audio/mpeg"
+            }
         }
     }
 
@@ -149,13 +158,15 @@ func renderRSS(shares []Share) string {
 
 
 func runServer() {
-    goweb.MapFunc("/", func(c *goweb.Context) {
+    r := mux.NewRouter()
+    r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
         authStuff = gettLogin()
         shares := enumerateShares()
         rss := renderRSS(shares)
-        fmt.Fprint(c.ResponseWriter, rss)
+        fmt.Fprint(w, rss)
     })
+    http.Handle("/", r)
 
     fmt.Println("Running server")
-    goweb.ListenAndServe("0.0.0.0:3001")
+    http.ListenAndServe(":3001", nil)
 }
