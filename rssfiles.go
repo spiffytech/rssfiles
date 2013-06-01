@@ -2,15 +2,18 @@ package main
 
 import (
     "bytes"
+    "encoding/csv"
     "encoding/json"
     "fmt"
     //"io"
+    "io"
     "io/ioutil"
     "path/filepath"
     "net/http"
     "net/url"
     "os"
     "strconv"
+    "strings"
     "time"
 
     mux "github.com/gorilla/mux"
@@ -18,6 +21,7 @@ import (
 )
 
 var baseurl = "https://open.ge.tt/1"
+var mimetypes map[string]string
 
 type File struct {
     Fileid int
@@ -59,6 +63,32 @@ func main() {
     //authStuff = gettLogin()
     //shares := enumerateShares()
     //fmt.Println(renderRSS(shares))
+
+    mimetypes = make(map[string]string)
+
+    f, err := os.Open("mimetypes")
+    if err != nil {
+        panic(err)
+    }
+    csvReader := csv.NewReader(f)
+    csvReader.TrimLeadingSpace = true
+    csvReader.Comma = '\t'
+    csvReader.Comment = '#'
+    for {
+        fields, err := csvReader.Read()
+        if err != nil {
+            if err == io.EOF {
+                break
+            } else {
+                panic(err)
+            }
+        }
+
+        for _, extension := range strings.Fields(fields[1]) {
+            mimetypes["." + extension] = fields[0]
+        }
+    }
+
     runServer()
 }
 
@@ -132,9 +162,7 @@ func enumerateShares() []Share {
             shares[shareIndex].Files[fileIndex].TimestampStr = shares[shareIndex].Files[fileIndex].Timestamp.Format(time.RFC822)
 
             ext := filepath.Ext(file.Filename)
-            if ext == ".mp3" || ext == ".m4a" {
-                shares[shareIndex].Files[fileIndex].Mimetype = "audio/mpeg"
-            }
+            shares[shareIndex].Files[fileIndex].Mimetype = mimetypes[ext]
         }
     }
 
