@@ -24,16 +24,17 @@ var baseurl = "https://open.ge.tt/1"
 var mimetypes map[string]string
 
 type File struct {
-    Fileid int
+    FileID int
+    FileIDRaw string `json:"fileid"`
     Filename string
     Getturl string
+    GetturlRaw string `json:"getturl"`
     Created int64
     Timestamp time.Time
     TimestampStr string
     Title string
     Size int64
     Guid string
-    FileID int `json:"fileid"`
     Mimetype string
 }
 func (f File) renderTitle(s Share) string {
@@ -147,6 +148,7 @@ func enumerateShares() []Share {
     fmt.Println(string(body))
 
     var shares []Share
+    fmt.Println(string(body))
     json.Unmarshal(body, &shares)
     fmt.Println(shares)
 
@@ -156,10 +158,14 @@ func enumerateShares() []Share {
         for fileIndex, file := range share.Files {
             shares[shareIndex].Files[fileIndex].Guid = share.Sharename + "_" + strconv.Itoa(file.FileID)
 
-            shares[shareIndex].Files[fileIndex].Getturl += "/blob?download"
+            stuff := fmt.Sprintf("http://ge.tt/api/1/files/%s/%s/blob?download", share.Sharename, file.FileIDRaw)
+
+            // http://ge.tt/api/1/files/79HHOBi/v/4/blob?download
+            // http://ge.tt/api/1/files/79HHOBi/4/blob?download
+            shares[shareIndex].Files[fileIndex].Getturl = stuff
 
             shares[shareIndex].Files[fileIndex].Timestamp = time.Unix(file.Created, 0)
-            shares[shareIndex].Files[fileIndex].TimestampStr = shares[shareIndex].Files[fileIndex].Timestamp.Format(time.RFC822)
+            shares[shareIndex].Files[fileIndex].TimestampStr = shares[shareIndex].Files[fileIndex].Timestamp.Format(time.RFC1123Z)
 
             ext := filepath.Ext(file.Filename)
             shares[shareIndex].Files[fileIndex].Mimetype = mimetypes[ext]
@@ -195,6 +201,6 @@ func runServer() {
     })
     http.Handle("/", r)
 
-    fmt.Println("Running server")
+    fmt.Println("Listening for connections")
     http.ListenAndServe(":3001", nil)
 }
